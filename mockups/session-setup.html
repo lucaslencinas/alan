@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alan - Start Session</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f8f9fa;
+      color: #202124;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 48px;
+      background: #fff;
+      border-bottom: 1px solid #e8eaed;
+    }
+    .logo {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a73e8;
+      text-decoration: none;
+    }
+    .back-link {
+      font-size: 14px;
+      color: #5f6368;
+      text-decoration: none;
+    }
+    .back-link:hover { color: #202124; }
+
+    /* Main */
+    .main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+    }
+    .setup-card {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 16px;
+      padding: 48px;
+      width: 100%;
+      max-width: 480px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .setup-card h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #202124;
+      margin-bottom: 8px;
+    }
+    .setup-card > p {
+      font-size: 14px;
+      color: #5f6368;
+      margin-bottom: 32px;
+    }
+
+    /* Topic Selection */
+    .topic-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #5f6368;
+      text-align: left;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .topic-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .topic-card {
+      background: #fff;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 20px 16px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: left;
+    }
+    .topic-card:hover { border-color: #1a73e8; background: #f8f9ff; }
+    .topic-card.selected { border-color: #1a73e8; background: #e8f0fe; }
+    .topic-card h4 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #202124;
+      margin-bottom: 4px;
+    }
+    .topic-card p {
+      font-size: 12px;
+      color: #5f6368;
+    }
+
+    /* Class code */
+    .class-code-section {
+      margin-bottom: 32px;
+      text-align: left;
+    }
+    .class-code-row {
+      display: flex;
+      gap: 8px;
+    }
+    .class-code-row input {
+      flex: 1;
+      background: #fff;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #202124;
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+    }
+    .class-code-row input::placeholder { color: #9aa0a6; }
+    .class-code-row input:focus { outline: none; border-color: #1a73e8; }
+    .optional-text {
+      font-size: 12px;
+      color: #9aa0a6;
+      margin-top: 6px;
+    }
+
+    /* Start button */
+    .start-btn {
+      width: 100%;
+      padding: 14px;
+      background: #1a73e8;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 24px;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: background 0.2s;
+      margin-bottom: 32px;
+    }
+    .start-btn:hover { background: #1557b0; }
+
+    /* Divider */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .divider-line {
+      flex: 1;
+      height: 1px;
+      background: #e0e0e0;
+    }
+    .divider-text {
+      font-size: 12px;
+      color: #9aa0a6;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* QR Section */
+    .qr-section {
+      text-align: center;
+    }
+    .qr-section h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #202124;
+      margin-bottom: 4px;
+    }
+    .qr-section > p {
+      font-size: 13px;
+      color: #5f6368;
+      margin-bottom: 20px;
+    }
+    .qr-box {
+      width: 180px;
+      height: 180px;
+      background: #f8f9fa;
+      border: 2px dashed #dadce0;
+      border-radius: 12px;
+      margin: 0 auto 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9aa0a6;
+      font-size: 14px;
+    }
+    .qr-hint {
+      font-size: 12px;
+      color: #9aa0a6;
+      line-height: 1.4;
+    }
+
+    /* Waiting state */
+    .waiting-status {
+      margin-top: 20px;
+      padding: 12px 16px;
+      background: #fef7e0;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #e37400;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .waiting-dot {
+      width: 8px;
+      height: 8px;
+      background: #f9ab00;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="landing.html" class="logo">Alan</a>
+    <a href="landing.html" class="back-link">← Back</a>
+  </header>
+
+  <div class="main">
+    <div class="setup-card">
+      <h1>Start a session</h1>
+      <p>Pick a topic, connect your phone, and start solving.</p>
+
+      <div class="topic-label">What are you studying?</div>
+      <div class="topic-grid">
+        <div class="topic-card selected">
+          <h4>Integrals</h4>
+          <p>Definite, indefinite, by parts</p>
+        </div>
+        <div class="topic-card">
+          <h4>Equations</h4>
+          <p>Polynomial, quadratic, linear</p>
+        </div>
+      </div>
+
+      <div class="class-code-section">
+        <div class="topic-label">Class code</div>
+        <div class="class-code-row">
+          <input type="text" placeholder="e.g. MATH-301">
+        </div>
+        <div class="optional-text">Optional — enter your teacher's code to track progress</div>
+      </div>
+
+      <button class="start-btn">Create Session</button>
+
+      <div class="divider">
+        <div class="divider-line"></div>
+        <div class="divider-text">Then</div>
+        <div class="divider-line"></div>
+      </div>
+
+      <div class="qr-section">
+        <h3>Connect your phone</h3>
+        <p>Scan this QR code to use your phone as the camera</p>
+        <div class="qr-box">[ QR Code ]</div>
+        <div class="qr-hint">Your phone films your paper. This screen shows the math.</div>
+
+        <div class="waiting-status">
+          <div class="waiting-dot"></div>
+          Waiting for phone to connect...
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

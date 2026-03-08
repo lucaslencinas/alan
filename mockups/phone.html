@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Alan - Phone View</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #000;
+      color: #fff;
+      height: 100vh;
+      width: 100vw;
+      max-width: 430px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Camera Feed (full screen background) */
+    .camera-feed {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #2a2a2a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* Simulated paper with handwriting */
+    .paper-simulation {
+      width: 85%;
+      height: 60%;
+      background: #f5f0e8;
+      border-radius: 4px;
+      padding: 30px 24px;
+      position: relative;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    }
+    .paper-line {
+      border-bottom: 1px solid #c8d4e8;
+      height: 32px;
+    }
+    .handwriting {
+      font-family: 'Georgia', serif;
+      color: #2a2a6a;
+      font-size: 20px;
+      position: absolute;
+      transform: rotate(-1deg);
+    }
+    .hw-1 { top: 35px; left: 30px; }
+    .hw-2 { top: 67px; left: 30px; }
+    .hw-3 { top: 99px; left: 30px; font-size: 18px; color: #888; }
+
+    /* Top overlay — kept dark for camera readability */
+    .top-overlay {
+      position: relative;
+      z-index: 10;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+    }
+    .session-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .topic-pill {
+      background: rgba(26, 115, 232, 0.3);
+      color: #8ab4f8;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #81c995;
+    }
+    .connection-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #34a853;
+    }
+
+    /* Speaking indicator overlay */
+    .speaking-overlay {
+      position: relative;
+      z-index: 10;
+      margin: auto 20px 0;
+      padding: 16px 20px;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+    .speaking-label {
+      font-size: 12px;
+      color: #1a73e8;
+      font-weight: 600;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .speaking-text {
+      font-size: 14px;
+      color: #3c4043;
+      line-height: 1.4;
+    }
+    .wave-bars {
+      display: flex;
+      gap: 2px;
+      align-items: center;
+    }
+    .wave-bars span {
+      display: block;
+      width: 2px;
+      background: #1a73e8;
+      border-radius: 1px;
+    }
+    .wave-bars span:nth-child(1) { height: 6px; }
+    .wave-bars span:nth-child(2) { height: 10px; }
+    .wave-bars span:nth-child(3) { height: 7px; }
+    .wave-bars span:nth-child(4) { height: 12px; }
+    .wave-bars span:nth-child(5) { height: 5px; }
+
+    /* Bottom controls */
+    .bottom-controls {
+      position: relative;
+      z-index: 10;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 32px;
+      background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+      padding-bottom: 40px;
+    }
+    .control-btn {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      cursor: pointer;
+    }
+    .control-btn.mic {
+      background: #1a73e8;
+      color: #fff;
+      width: 64px;
+      height: 64px;
+    }
+    .control-btn.secondary {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+      backdrop-filter: blur(10px);
+    }
+    .control-btn.end {
+      background: #ea4335;
+      color: #fff;
+    }
+    .control-label {
+      font-size: 10px;
+      color: rgba(255,255,255,0.7);
+      text-align: center;
+      margin-top: 6px;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .timer {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+      padding: 8px;
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body>
+  <!-- Camera Feed Background -->
+  <div class="camera-feed">
+    <div class="paper-simulation">
+      <div class="paper-line"></div>
+      <div class="paper-line"></div>
+      <div class="paper-line"></div>
+      <div class="paper-line"></div>
+      <div class="paper-line"></div>
+      <div class="paper-line"></div>
+      <div class="paper-line"></div>
+      <div class="paper-line"></div>
+      <span class="handwriting hw-1">∫ (x² + 3x − 5) dx</span>
+      <span class="handwriting hw-2">= x³/3 + 3x − 5x + C</span>
+      <span class="handwriting hw-3">↑ is this right?</span>
+    </div>
+  </div>
+
+  <!-- Top Overlay -->
+  <div class="top-overlay">
+    <div class="session-info">
+      <div class="logo">Alan</div>
+      <div class="topic-pill">Integrals</div>
+    </div>
+    <div class="connection-status">
+      <div class="connection-dot"></div>
+      Display connected
+    </div>
+  </div>
+
+  <!-- Speaking Indicator -->
+  <div class="speaking-overlay">
+    <div class="speaking-label">
+      <div class="wave-bars">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      Alan is speaking
+    </div>
+    <div class="speaking-text">
+      "Your second term has a small error. The integral of 3x should be 3x²/2, not 3x..."
+    </div>
+  </div>
+
+  <!-- Timer -->
+  <div class="timer">4:32</div>
+
+  <!-- Bottom Controls -->
+  <div class="bottom-controls">
+    <div class="control-group">
+      <button class="control-btn secondary">🔄</button>
+      <div class="control-label">Flip</div>
+    </div>
+    <div class="control-group">
+      <button class="control-btn mic">🎤</button>
+      <div class="control-label">Mic On</div>
+    </div>
+    <div class="control-group">
+      <button class="control-btn end">✕</button>
+      <div class="control-label">End</div>
+    </div>
+  </div>
+</body>
+</html>
