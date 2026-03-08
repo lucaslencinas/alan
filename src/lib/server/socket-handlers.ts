@@ -1,14 +1,193 @@
-import type { Server as SocketServer } from "socket.io";
-import type { ClientToServerEvents, ServerToClientEvents } from "@/types/socket-events";
+import type { Server as SocketServer, Socket } from "socket.io";
+import type {
+  ClientToServerEvents,
+  ServerToClientEvents,
+} from "@/types/socket-events";
+import type { StepRecord } from "@/types/session";
+import {
+  createSession,
+  getSession,
+  joinSession,
+  endSession,
+  getSessionBySocketId,
+  removeSocketFromSession,
+} from "./session-manager";
+import {
+  createGeminiSession,
+  sendAudioToGemini,
+  sendVideoToGemini,
+  closeGeminiSession,
+} from "./gemini-live";
+import { saveSession } from "./firestore";
+
+type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 
 export function setupSocketHandlers(
   io: SocketServer<ClientToServerEvents, ServerToClientEvents>
 ): void {
-  io.on("connection", (socket) => {
+  io.on("connection", (socket: TypedSocket) => {
     console.log(`Client connected: ${socket.id}`);
+
+    socket.on("create-session", (data, callback) => {
+      const sessionId = createSession(
+        data.topic,
+        data.studentName,
+        data.classCode
+      );
+      console.log(`Session created: ${sessionId} (topic: ${data.topic})`);
+      callback(sessionId);
+    });
+
+    socket.on("join-session", async (data) => {
+      const session = joinSession(data.sessionId, data.role, socket.id);
+      if (!session) {
+        socket.emit("error", { message: "Session not found" });
+        return;
+      }
+
+      socket.emit("session-joined", {
+        sessionId: data.sessionId,
+        role: data.role,
+      });
+
+      if (data.role === "phone") {
+        // Create Gemini session when phone connects
+        try {
+          const geminiSession = await createGeminiSession(
+            session.topic,
+            // onAudio: relay to phone
+            (base64Audio) => {
+              if (session.phoneSocketId) {
+                io.to(session.phoneSocketId).emit("audio-response", {
+                  audio: base64Audio,
+                });
+              }
+            },
+            // onFunctionCall: relay to display and store in session
+            (name, args) => {
+              if (session.displaySocketId) {
+                io.to(session.displaySocketId).emit("function-call", {
+                  name,
+                  args,
+                });
+              }
+
+              // Store step/hint/summary in session state
+              if (name === "show_step") {
+                const step: StepRecord = {
+                  stepNumber: args.step_number as number,
+                  label: args.label as string,
+                  mathPlain: args.math_plain as string,
+                  status: args.status as "correct" | "error" | "warning",
+                  note: args.note as string,
+                  correctionPlain:
+                    (args.correction_plain as string) ?? null,
+                };
+                session.steps.push(step);
+              } else if (name === "show_hint") {
+                session.hints.push({
+                  type: args.type as string,
+                  title: args.title as string,
+                  content: args.content as string,
+                });
+              } else if (name === "clear_steps") {
+                session.steps = [];
+                session.hints = [];
+              } else if (name === "show_summary") {
+                session.summary = {
+                  problemPlain: args.problem_plain as string,
+                  totalSteps: args.total_steps as number,
+                  correctSteps: args.correct_steps as number,
+                  errorSteps: args.error_steps as number,
+                  feedback: args.feedback as string,
+                };
+              }
+            },
+            // onError
+            (error) => {
+              console.error("Gemini error:", error);
+              socket.emit("error", { message: "AI connection error" });
+            }
+          );
+
+          session.geminiSession = geminiSession;
+        } catch (err) {
+          console.error("Failed to create Gemini session:", err);
+          socket.emit("error", { message: "Failed to connect to AI" });
+          return;
+        }
+
+        // Notify display that phone connected
+        if (session.displaySocketId) {
+          io.to(session.displaySocketId).emit("phone-connected");
+        }
+      } else if (data.role === "display") {
+        // Notify phone that display connected
+        if (session.phoneSocketId) {
+          io.to(session.phoneSocketId).emit("display-connected");
+        }
+      }
+    });
+
+    socket.on("audio-data", (data) => {
+      const session = getSessionBySocketId(socket.id);
+      if (!session?.geminiSession) return;
+      sendAudioToGemini(session.geminiSession, data.audio);
+    });
+
+    socket.on("video-frame", (data) => {
+      const session = getSessionBySocketId(socket.id);
+      if (!session?.geminiSession) return;
+      sendVideoToGemini(session.geminiSession, data.frame);
+    });
+
+    socket.on("end-session", async () => {
+      const session = getSessionBySocketId(socket.id);
+      if (!session) return;
+
+      // Close Gemini session
+      if (session.geminiSession) {
+        closeGeminiSession(session.geminiSession);
+      }
+
+      // End session and get data for saving
+      const sessionData = endSession(session.id);
+      if (sessionData) {
+        try {
+          await saveSession(sessionData);
+          console.log(`Session ${session.id} saved to Firestore`);
+        } catch (err) {
+          console.error("Failed to save session:", err);
+        }
+      }
+
+      // Notify both clients
+      if (session.phoneSocketId) {
+        io.to(session.phoneSocketId).emit("session-ended");
+      }
+      if (session.displaySocketId) {
+        io.to(session.displaySocketId).emit("session-ended");
+      }
+    });
 
     socket.on("disconnect", () => {
       console.log(`Client disconnected: ${socket.id}`);
+
+      const session = getSessionBySocketId(socket.id);
+      if (!session) return;
+
+      removeSocketFromSession(session.id, socket.id);
+
+      // If both clients are gone, clean up
+      if (!session.phoneSocketId && !session.displaySocketId) {
+        if (session.geminiSession) {
+          closeGeminiSession(session.geminiSession);
+        }
+        endSession(session.id);
+        console.log(
+          `Session ${session.id} cleaned up (both clients disconnected)`
+        );
+      }
     });
   });
 }
