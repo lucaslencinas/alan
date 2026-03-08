@@ -6,8 +6,15 @@ import { TopicBreakdown } from "@/components/teacher/TopicBreakdown";
 import { InsightsPanel } from "@/components/teacher/InsightsPanel";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 export default async function TeacherPage() {
-  const sessions = await getSessions();
+  let sessions: Awaited<ReturnType<typeof getSessions>> = [];
+  try {
+    sessions = await getSessions();
+  } catch {
+    // Firestore not available (local dev without credentials)
+  }
 
   const uniqueStudents = new Set(sessions.map((s) => s.studentName)).size;
 
