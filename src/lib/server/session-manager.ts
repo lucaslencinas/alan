@@ -7,6 +7,7 @@ export interface ActiveSession {
   topic: Topic;
   studentName: string;
   classCode: string;
+  creatorSocketId: string | null;
   phoneSocketId: string | null;
   displaySocketId: string | null;
   geminiSession: GeminiSession | null;
@@ -30,6 +31,7 @@ export function createSession(
     topic,
     studentName,
     classCode,
+    creatorSocketId: null,
     phoneSocketId: null,
     displaySocketId: null,
     geminiSession: null,
@@ -76,7 +78,8 @@ export function getSessionBySocketId(socketId: string): ActiveSession | null {
   for (const session of sessions.values()) {
     if (
       session.phoneSocketId === socketId ||
-      session.displaySocketId === socketId
+      session.displaySocketId === socketId ||
+      session.creatorSocketId === socketId
     ) {
       return session;
     }
@@ -96,5 +99,8 @@ export function removeSocketFromSession(
   }
   if (session.displaySocketId === socketId) {
     session.displaySocketId = null;
+  }
+  if (session.creatorSocketId === socketId) {
+    session.creatorSocketId = null;
   }
 }

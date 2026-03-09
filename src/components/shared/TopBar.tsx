@@ -25,7 +25,7 @@ export default function TopBar({
       </div>
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 text-sm text-gray-500">
-          <span className="inline-block h-2 w-2 rounded-full bg-[#16a34a]" />
+          <span className={`inline-block h-2 w-2 rounded-full ${onAction ? "bg-[#16a34a]" : "bg-gray-400"}`} />
           {status}
         </div>
         {onAction && (

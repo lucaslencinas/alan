@@ -80,3 +80,8 @@ This file records product decisions made during development.
   - `WIF_SERVICE_ACCOUNT` = service account email
   - `GENAI_API_KEY` = (to be set)
 - **Cloud Run config:** `--timeout 3600 --session-affinity` for WebSocket support
+
+## 2026-03-09: Local Development Auth
+
+- **Firestore is skipped locally.** No local GCP credentials for Firestore — the code gracefully falls back (saves skipped, reads return empty). Firestore works automatically on Cloud Run via default service account.
+- **NEVER run `gcloud auth application-default login` with the personal account.** It overwrites the global ADC that other tools depend on. The alan app uses `GENAI_API_KEY` env var for Gemini, not ADC.

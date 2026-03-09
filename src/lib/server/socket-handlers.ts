@@ -34,16 +34,25 @@ export function setupSocketHandlers(
         data.studentName,
         data.classCode
       );
-      console.log(`Session created: ${sessionId} (topic: ${data.topic})`);
+      // Track the creator socket so we can notify it when phone connects
+      const session = getSession(sessionId);
+      if (session) {
+        session.creatorSocketId = socket.id;
+      }
+      console.log(`Session created: ${sessionId} (topic: ${data.topic}), creator=${socket.id}`);
       callback(sessionId);
     });
 
     socket.on("join-session", async (data) => {
+      console.log(`join-session request: sessionId=${data.sessionId}, role=${data.role}, socketId=${socket.id}`);
       const session = joinSession(data.sessionId, data.role, socket.id);
       if (!session) {
+        console.log(`Session ${data.sessionId} not found!`);
         socket.emit("error", { message: "Session not found" });
         return;
       }
+
+      console.log(`${data.role} joined session ${data.sessionId} (phone=${session.phoneSocketId}, display=${session.displaySocketId})`);
 
       socket.emit("session-joined", {
         sessionId: data.sessionId,
@@ -117,15 +126,23 @@ export function setupSocketHandlers(
           return;
         }
 
-        // Notify display that phone connected
+        // Notify creator socket (setup page) that phone connected
+        if (session.creatorSocketId) {
+          io.to(session.creatorSocketId).emit("phone-connected");
+        }
+        // Also notify display if it's already connected
         if (session.displaySocketId) {
           io.to(session.displaySocketId).emit("phone-connected");
         }
+        console.log(`Phone connected to session ${data.sessionId}, notified creator=${session.creatorSocketId}, display=${session.displaySocketId}`);
       } else if (data.role === "display") {
         // Notify phone that display connected
         if (session.phoneSocketId) {
           io.to(session.phoneSocketId).emit("display-connected");
+          // Phone is already connected, notify display
+          socket.emit("phone-connected");
         }
+        console.log(`Display connected to session ${data.sessionId}, phone=${session.phoneSocketId}`);
       }
     });
 
@@ -170,8 +187,8 @@ export function setupSocketHandlers(
       }
     });
 
-    socket.on("disconnect", () => {
-      console.log(`Client disconnected: ${socket.id}`);
+    socket.on("disconnect", (reason) => {
+      console.log(`Client disconnected: ${socket.id} (reason: ${reason})`);
 
       const session = getSessionBySocketId(socket.id);
       if (!session) return;

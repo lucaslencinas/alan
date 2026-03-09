@@ -9,7 +9,14 @@ import { getSystemPrompt } from "@/config/prompts";
 import { toolDeclarations } from "@/config/tools";
 import type { Topic } from "@/types/session";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GENAI_API_KEY });
+let ai: GoogleGenAI | null = null;
+
+function getAI(): GoogleGenAI {
+  if (!ai) {
+    ai = new GoogleGenAI({ apiKey: process.env.GENAI_API_KEY! });
+  }
+  return ai;
+}
 
 export async function createGeminiSession(
   topic: Topic,
@@ -17,8 +24,8 @@ export async function createGeminiSession(
   onFunctionCall: (name: string, args: Record<string, unknown>) => void,
   onError: (error: unknown) => void
 ): Promise<Session> {
-  const session = await ai.live.connect({
-    model: "gemini-2.5-flash-native-audio-preview",
+  const session = await getAI().live.connect({
+    model: "gemini-2.5-flash-native-audio-latest",
     config: {
       responseModalities: [Modality.AUDIO],
       systemInstruction: getSystemPrompt(topic),
@@ -39,18 +46,29 @@ export async function createGeminiSession(
         if (message.toolCall?.functionCalls) {
           for (const fc of message.toolCall.functionCalls) {
             if (fc.name && fc.args) {
+              console.log(`Gemini function call: ${fc.name}(${JSON.stringify(fc.args).slice(0, 100)}...)`);
               onFunctionCall(fc.name, fc.args);
-              // Send back an empty response so Gemini continues
-              sendFunctionResponse(session, fc);
+              // Send back a response so Gemini continues
+              try {
+                sendFunctionResponse(session, fc);
+              } catch (err) {
+                console.error("Error sending function response:", err);
+              }
             }
           }
         }
+
+        // Log other message types for debugging
+        if (message.serverContent?.turnComplete) {
+          console.log("Gemini turn complete");
+        }
       },
       onerror: (e: ErrorEvent) => {
-        onError(e.error ?? e);
+        console.error("Gemini Live API error:", e.message || e);
+        onError(e.error ?? e.message ?? e);
       },
-      onclose: () => {
-        console.log("Gemini session closed");
+      onclose: (e: CloseEvent) => {
+        console.log(`Gemini session closed (code: ${e.code}, reason: ${e.reason || "none"})`);
       },
     },
   });
@@ -60,11 +78,11 @@ export async function createGeminiSession(
 
 function sendFunctionResponse(session: Session, fc: FunctionCall): void {
   session.sendToolResponse({
-    functionResponses: {
+    functionResponses: [{
       id: fc.id!,
       name: fc.name!,
       response: { success: true },
-    },
+    }],
   });
 }
 

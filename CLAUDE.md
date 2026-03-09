@@ -158,6 +158,11 @@ alan/
 
 When creating commits, do NOT include the "Co-Authored-By" line in commit messages.
 
+**Git identity for this repo:**
+- Name: `lucaslencinas`
+- Email: `lllencinas@gmail.com`
+- This is set in the local repo config. Do NOT use the work email.
+
 ## MVP Scope
 
 Two-device flow: phone as camera, laptop as whiteboard.

@@ -9,21 +9,21 @@ import NameInput from "@/components/session/NameInput";
 import ClassCodeInput from "@/components/session/ClassCodeInput";
 import QRCodeDisplay from "@/components/session/QRCodeDisplay";
 import ConnectionStatus from "@/components/session/ConnectionStatus";
-import { getSocket, disconnectSocket, type TypedSocket } from "@/lib/client/socket-client";
+import { getSocket, type TypedSocket } from "@/lib/client/socket-client";
 
 export default function SessionSetupPage() {
   const router = useRouter();
   const [selectedTopic, setSelectedTopic] = useState<Topic>("integrals");
   const [studentName, setStudentName] = useState("");
-  const [classCode, setClassCode] = useState("");
+  const [classCode, setClassCode] = useState("MATH");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [phoneConnected, setPhoneConnected] = useState(false);
   const [creating, setCreating] = useState(false);
   const socketRef = useRef<TypedSocket | null>(null);
 
-  const appUrl = typeof window !== "undefined"
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined"
     ? window.location.origin
-    : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    : "http://localhost:3000");
 
   const handleCreateSession = useCallback(() => {
     if (!studentName.trim() || creating) return;
@@ -55,11 +55,8 @@ export default function SessionSetupPage() {
     }
   }, [phoneConnected, sessionId, router]);
 
-  useEffect(() => {
-    return () => {
-      disconnectSocket();
-    };
-  }, []);
+  // Don't disconnect on unmount — the display page will reuse or create a new socket.
+  // The creator socket stays alive until the display page takes over.
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">

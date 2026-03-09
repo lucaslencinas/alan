@@ -1,3 +1,8 @@
+import { config } from "dotenv";
+const result = config({ path: ".env.local" });
+console.log("dotenv loaded:", result.error ? `ERROR: ${result.error.message}` : "OK");
+console.log("GENAI_API_KEY set:", !!process.env.GENAI_API_KEY, process.env.GENAI_API_KEY?.slice(0, 10) + "...");
+
 import { createServer } from "http";
 import { parse } from "url";
 import next from "next";

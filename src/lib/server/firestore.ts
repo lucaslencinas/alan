@@ -1,43 +1,58 @@
 import { initializeApp, getApps, cert, applicationDefault } from "firebase-admin/app";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getFirestore } from "firebase-admin/firestore";
 import type { ActiveSession } from "./session-manager";
 
+let db: FirebaseFirestore.Firestore | null = null;
+
 // Initialize Firebase Admin SDK (once)
-if (getApps().length === 0) {
-  const credential = process.env.GOOGLE_APPLICATION_CREDENTIALS
-    ? cert(process.env.GOOGLE_APPLICATION_CREDENTIALS)
-    : applicationDefault();
+try {
+  if (getApps().length === 0) {
+    const credential = process.env.GOOGLE_APPLICATION_CREDENTIALS
+      ? cert(process.env.GOOGLE_APPLICATION_CREDENTIALS)
+      : applicationDefault();
 
-  initializeApp({
-    credential,
-    projectId: process.env.GCP_PROJECT_ID,
-  });
+    initializeApp({
+      credential,
+      projectId: process.env.GCP_PROJECT_ID,
+    });
+  }
+  db = getFirestore();
+} catch (err) {
+  console.warn("Firestore not available (no credentials). Session saving disabled.", (err as Error).message);
 }
-
-const db = getFirestore();
 const SESSIONS_COLLECTION = "sessions";
 
 export async function saveSession(session: ActiveSession): Promise<void> {
+  if (!db) {
+    console.warn("Firestore not available, skipping session save.");
+    return;
+  }
+
   const durationSeconds = session.endedAt
     ? Math.round(
         (session.endedAt.getTime() - session.createdAt.getTime()) / 1000
       )
     : 0;
 
-  await db
-    .collection(SESSIONS_COLLECTION)
-    .doc(session.id)
-    .set({
-      id: session.id,
-      studentName: session.studentName,
-      classCode: session.classCode,
-      topic: session.topic,
-      createdAt: session.createdAt,
-      endedAt: session.endedAt,
-      durationSeconds,
-      steps: session.steps,
-      summary: session.summary,
-    });
+  try {
+    await db
+      .collection(SESSIONS_COLLECTION)
+      .doc(session.id)
+      .set({
+        id: session.id,
+        studentName: session.studentName,
+        classCode: session.classCode,
+        topic: session.topic,
+        createdAt: session.createdAt,
+        endedAt: session.endedAt,
+        durationSeconds,
+        steps: session.steps,
+        summary: session.summary,
+      });
+    console.log(`Session ${session.id} saved to Firestore`);
+  } catch (err) {
+    console.warn("Firestore save failed (likely no local credentials), skipping:", (err as Error).message);
+  }
 }
 
 export interface SessionDocument {
@@ -68,6 +83,8 @@ export interface SessionDocument {
 export async function getSessions(
   classCode?: string
 ): Promise<SessionDocument[]> {
+  if (!db) return [];
+
   let query: FirebaseFirestore.Query = db.collection(SESSIONS_COLLECTION);
 
   if (classCode) {
@@ -81,6 +98,8 @@ export async function getSessions(
 export async function getSessionsByStudent(
   studentName: string
 ): Promise<SessionDocument[]> {
+  if (!db) return [];
+
   const snapshot = await db
     .collection(SESSIONS_COLLECTION)
     .where("studentName", "==", studentName)
