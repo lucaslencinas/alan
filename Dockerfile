@@ -26,7 +26,7 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/dist-server ./dist-server
 COPY --from=builder /app/public ./public
 
-EXPOSE 3000
-ENV PORT=3000
+EXPOSE 8080
+ENV PORT=8080
 
 CMD ["node", "dist-server/server.js"]
