@@ -1,45 +1,61 @@
-name: Deploy to Cloud Run
+name: Build and Deploy to Cloud Run
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 env:
   PROJECT_ID: alan-live-tutor
-  SERVICE_NAME: alan
+  GAR_LOCATION: us-central1
+  REPOSITORY: alan
+  SERVICE: alan
   REGION: us-central1
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
     permissions:
-      contents: read
-      id-token: write
+      contents: 'read'
+      id-token: 'write'
 
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: google-github-actions/auth@v2
+      - name: Google Auth
+        id: auth
+        uses: 'google-github-actions/auth@v2'
         with:
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+          token_format: 'access_token'
+          workload_identity_provider: '${{ vars.WIF_PROVIDER }}'
+          service_account: '${{ vars.WIF_SERVICE_ACCOUNT }}'
 
-      - uses: google-github-actions/setup-gcloud@v2
+      - name: Docker Auth
+        uses: 'docker/login-action@v3'
+        with:
+          username: 'oauth2accesstoken'
+          password: '${{ steps.auth.outputs.access_token }}'
+          registry: '${{ env.GAR_LOCATION }}-docker.pkg.dev'
 
-      - name: Build and push container
-        run: gcloud builds submit --tag gcr.io/$PROJECT_ID/$SERVICE_NAME
+      - name: Build and Push Container
+        run: |-
+          docker build -t "${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:${{ github.sha }}" ./
+          docker push "${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:${{ github.sha }}"
 
       - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy $SERVICE_NAME \
-            --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
-            --region $REGION \
-            --platform managed \
-            --allow-unauthenticated \
-            --set-env-vars "GENAI_API_KEY=${{ secrets.GENAI_API_KEY }}" \
-            --set-env-vars "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" \
-            --set-env-vars "NODE_ENV=production" \
-            --timeout 3600 \
-            --session-affinity \
-            --min-instances 0 \
-            --max-instances 3
+        id: deploy
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          image: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:${{ github.sha }}
+          env_vars: |
+            GENAI_API_KEY=${{ secrets.GENAI_API_KEY }}
+            GCP_PROJECT_ID=${{ env.PROJECT_ID }}
+            NODE_ENV=production
+          timeout: 3600s
+          flags: '--session-affinity --min-instances=0 --max-instances=3'
+
+      - name: Show Output
+        run: echo ${{ steps.deploy.outputs.url }}

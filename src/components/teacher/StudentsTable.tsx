@@ -22,7 +22,7 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-function formatRelativeTime(timestamp: FirebaseFirestore.Timestamp | Date): string {
+function formatRelativeTime(timestamp: { toDate(): Date } | Date): string {
   const date = timestamp instanceof Date ? timestamp : timestamp.toDate();
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -52,7 +52,7 @@ export function StudentsTable({ sessions }: StudentsTableProps) {
       topics: Set<string>;
       totalSteps: number;
       correctSteps: number;
-      lastActive: FirebaseFirestore.Timestamp | Date;
+      lastActive: { toDate(): Date } | Date;
     }
   >();
 
