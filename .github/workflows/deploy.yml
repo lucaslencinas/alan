@@ -55,7 +55,7 @@ jobs:
             GCP_PROJECT_ID=${{ env.PROJECT_ID }}
             NODE_ENV=production
           timeout: 3600s
-          flags: '--session-affinity --min-instances=0 --max-instances=3'
+          flags: '--session-affinity --min-instances=1 --max-instances=3'
 
       - name: Show Output
         run: echo ${{ steps.deploy.outputs.url }}
