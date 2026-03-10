@@ -6,6 +6,11 @@ let sourceNode: MediaStreamAudioSourceNode | null = null;
 let workletNode: AudioWorkletNode | null = null;
 let muted = false;
 
+// Buffer audio to send larger chunks less frequently
+const BUFFER_DURATION_MS = 500; // Send audio every 500ms
+let audioBuffer: Float32Array[] = [];
+let bufferInterval: ReturnType<typeof setInterval> | null = null;
+
 // Inline AudioWorklet processor code (registered as a blob URL)
 const workletCode = `
 class PcmProcessor extends AudioWorkletProcessor {
@@ -82,15 +87,34 @@ export async function startMicCapture(
   workletNode.port.onmessage = (event: MessageEvent<Float32Array>) => {
     if (muted) return;
     const samples = downsample(event.data, actualRate, TARGET_SAMPLE_RATE);
-    const base64 = float32ToPcm16Base64(samples);
-    onAudioData(base64);
+    audioBuffer.push(samples);
   };
+
+  // Flush the buffer periodically
+  bufferInterval = setInterval(() => {
+    if (audioBuffer.length === 0) return;
+    const totalLength = audioBuffer.reduce((sum, buf) => sum + buf.length, 0);
+    const merged = new Float32Array(totalLength);
+    let offset = 0;
+    for (const buf of audioBuffer) {
+      merged.set(buf, offset);
+      offset += buf.length;
+    }
+    audioBuffer = [];
+    const base64 = float32ToPcm16Base64(merged);
+    onAudioData(base64);
+  }, BUFFER_DURATION_MS);
 
   sourceNode.connect(workletNode);
   workletNode.connect(audioContext.destination);
 }
 
 export function stopMicCapture(): void {
+  if (bufferInterval) {
+    clearInterval(bufferInterval);
+    bufferInterval = null;
+  }
+  audioBuffer = [];
   if (workletNode) {
     workletNode.disconnect();
     workletNode = null;

@@ -112,10 +112,37 @@ export function setupSocketHandlers(
                 };
               }
             },
-            // onError
-            (error) => {
+            // onError — auto-reconnect on crash
+            async (error) => {
               console.error("Gemini error:", error);
-              socket.emit("error", { message: "AI connection error" });
+              if (session.phoneSocketId) {
+                console.log(`Attempting to reconnect Gemini for session ${session.id}...`);
+                try {
+                  const newSession = await createGeminiSession(
+                    session.topic,
+                    (audio) => {
+                      if (session.phoneSocketId) {
+                        io.to(session.phoneSocketId).emit("audio-response", { audio });
+                      }
+                    },
+                    (name, args) => {
+                      if (session.displaySocketId) {
+                        io.to(session.displaySocketId).emit("function-call", { name, args });
+                      }
+                      if (session.phoneSocketId) {
+                        io.to(session.phoneSocketId).emit("function-call", { name, args });
+                      }
+                    },
+                    (err) => {
+                      console.error("Gemini reconnect also failed:", err);
+                    }
+                  );
+                  session.geminiSession = newSession;
+                  console.log(`Gemini reconnected for session ${session.id}`);
+                } catch (err) {
+                  console.error("Failed to reconnect Gemini:", err);
+                }
+              }
             }
           );
 

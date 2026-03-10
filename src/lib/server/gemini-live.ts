@@ -69,6 +69,10 @@ export async function createGeminiSession(
       },
       onclose: (e: CloseEvent) => {
         console.log(`Gemini session closed (code: ${e.code}, reason: ${e.reason || "none"})`);
+        // If Gemini crashed (not a clean close), notify via error callback
+        if (e.code !== 1000) {
+          onError(new Error(`Gemini session closed unexpectedly (code: ${e.code}, reason: ${e.reason})`));
+        }
       },
     },
   });
