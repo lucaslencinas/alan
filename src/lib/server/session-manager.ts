@@ -1,5 +1,5 @@
 import { nanoid } from "nanoid";
-import type { Topic, StepRecord, SummaryRecord } from "@/types/session";
+import type { Topic, StepRecord, SummaryRecord } from "../../types/session";
 import type { Session as GeminiSession } from "@google/genai";
 
 export interface ActiveSession {

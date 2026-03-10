@@ -5,9 +5,9 @@ import {
   type LiveServerMessage,
   type FunctionCall,
 } from "@google/genai";
-import { getSystemPrompt } from "@/config/prompts";
-import { toolDeclarations } from "@/config/tools";
-import type { Topic } from "@/types/session";
+import { getSystemPrompt } from "../../config/prompts";
+import { toolDeclarations } from "../../config/tools";
+import type { Topic } from "../../types/session";
 
 let ai: GoogleGenAI | null = null;
 

@@ -2,8 +2,8 @@ import type { Server as SocketServer, Socket } from "socket.io";
 import type {
   ClientToServerEvents,
   ServerToClientEvents,
-} from "@/types/socket-events";
-import type { StepRecord } from "@/types/session";
+} from "../../types/socket-events";
+import type { StepRecord } from "../../types/session";
 import {
   createSession,
   getSession,

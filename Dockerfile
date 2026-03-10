@@ -23,11 +23,10 @@ ENV NODE_ENV=production
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
-COPY --from=builder /app/server.js ./server.js
-COPY --from=builder /app/src ./src
+COPY --from=builder /app/dist-server ./dist-server
 COPY --from=builder /app/public ./public
 
 EXPOSE 3000
 ENV PORT=3000
 
-CMD ["node", "server.js"]
+CMD ["node", "dist-server/server.js"]
